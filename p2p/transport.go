@@ -7,4 +7,6 @@ type Peer interface {}
 // Transport is the socket,
 //  this means how are we doing communication
 //  with the nodes using (TCP, UDP, Websockets)
-type Transport interface {}
+type Transport interface {
+	ListenAndAccept() error
+}
