@@ -8,10 +8,15 @@ import (
 
 
 func TestTCPTransport(t *testing.T) {
-	listenAddress := ":4000"
-	tr := NewTCPTransport(listenAddress)
+	listenAddress := ":3000"
+	opts := TCPTransportOpts{
+		ListenAddress: listenAddress,	
+		HandShakeFunc: NOPHandShakeFunc,
+		Decoder: GOBDecoder{},
+	}
+	tr := NewTCPTransport(opts)
 
-	assert.Equal(t, listenAddress, tr.listenAddress)
+	assert.Equal(t, listenAddress, tr.ListenAddress)
 
 	// we need the server to listen 
 	assert.Nil(t, tr.ListenAndAccept())
