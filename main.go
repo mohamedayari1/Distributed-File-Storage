@@ -11,7 +11,7 @@ func main() {
 	opts := p2p.TCPTransportOpts{
 		ListenAddress: ":3000",	
 		HandShakeFunc: p2p.NOPHandShakeFunc,
-		Decoder: p2p.GOBDecoder{},
+		Decoder: p2p.DefaultDecoder{},
 	}
 	
 	tr := p2p.NewTCPTransport(opts)	

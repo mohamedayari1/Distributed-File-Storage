@@ -85,21 +85,14 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 	// 	fmt.Printf("TCP HandShakeError: %s\n", err)
 	// }	
 
-	buf := make([]byte, 2000)
-	// msg := &Message{}
+	msg := &Message{}
 	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Printf("TCP error: %s\n", err)
-		}
-		remoteAddr := conn.RemoteAddr()
-		fmt.Printf("%+v Just sent New Message : %+v  ", remoteAddr,string(buf[:n]))
 
-		// if err := t.Decoder.Decode(conn, msg); err != nil {
-		// 	fmt.Printf("TCP error: %s\n", err)
-		// 	continue
-		// }
-		// fmt.Printf("New Message: %+v  :", msg)
+		if err := t.Decoder.Decode(conn, msg); err != nil {
+			fmt.Printf("TCP error: %s\n", err)
+			continue
+		}
+		fmt.Printf("New Message: %+v  :", string(msg.Payload))
 
 	}
 	
