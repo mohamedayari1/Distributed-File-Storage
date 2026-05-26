@@ -1,6 +1,9 @@
 package p2p
 
-type Message struct {
-	remoteAddr string
+import "net"
+
+// RPC holds any arbitrary data that is being sent over the transport/network
+type RPC struct {
+	RemoteAddr net.Addr
 	Payload []byte
 }

@@ -25,7 +25,7 @@ type TCPTransportOpts struct {
 type TCPTransport struct {
 	TCPTransportOpts
 	listener net.Listener
-
+	rpcchan chan RPC
 
 	mu sync.RWMutex
 	peers map[net.Addr]Peer
@@ -35,6 +35,7 @@ type TCPTransport struct {
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
+		rpcchan: make(chan RPC),
 
 	}
 }
@@ -46,7 +47,16 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer{
 	}
 }
 
+func (peer *TCPPeer) Close() error {
+	return peer.conn.Close() 
+}
 
+
+// Consume implements the transport interface, which will return a read-only channel
+// for  reading incoming messages/RPCs sent from another peer
+func (t *TCPTransport) Consume() <-chan RPC {
+	return t.rpcchan
+}
 
 func (t *TCPTransport) ListenAndAccept() error {
 	var err error
@@ -78,22 +88,24 @@ func (t *TCPTransport) startAcceptLoop() {
 
 
 func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
-	// peer := NewTCPPeer(conn, true)
+	peer := NewTCPPeer(conn, true)
+	if err := t.HandShakeFunc(peer); err != nil {
+		conn.Close()
+		fmt.Printf("TCP HandShakeError: %s\n", err)
+	}	
 
-	// if err := t.HandShakeFunc(peer); err != nil {
-	// 	conn.Close()
-	// 	fmt.Printf("TCP HandShakeError: %s\n", err)
-	// }	
-
-	msg := &Message{}
+	rpc := RPC{}
+	rpc.RemoteAddr = conn.RemoteAddr()	
 	for {
 
-		if err := t.Decoder.Decode(conn, msg); err != nil {
+		if err := t.Decoder.Decode(conn, &rpc); err != nil {
 			fmt.Printf("TCP error: %s\n", err)
 			continue
 		}
-		fmt.Printf("New Message: %+v  :", string(msg.Payload))
+		fmt.Printf("New Message: %+v  :", string(rpc.Payload))
 
+		// The channel is supposed to be read only right ? why we are able to write on it ???
+		t.rpcchan <- rpc
 	}
 	
 

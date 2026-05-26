@@ -13,12 +13,19 @@ func main() {
 		HandShakeFunc: p2p.NOPHandShakeFunc,
 		Decoder: p2p.DefaultDecoder{},
 	}
-	
+
 	tr := p2p.NewTCPTransport(opts)	
 
 	if err := tr.ListenAndAccept(); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("we gucci")
+	
+	go func() {
+		msg := <- tr.Consume()
+		fmt.Printf("%+v Sent : %+v\n", msg.RemoteAddr, string(msg.Payload))
+	}()
+	
 	select {}
 }   
+
