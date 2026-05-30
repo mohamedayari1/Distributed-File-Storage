@@ -11,7 +11,7 @@ import (
 )
 
 
-func CASPathTransformFunc(key string) string {
+func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashStr := hex.EncodeToString(hash[:])
 	
@@ -23,11 +23,23 @@ func CASPathTransformFunc(key string) string {
 		from, to := i * blockSize, (i*blockSize)+blockSize
 		paths[i] = hashStr[from:to]
 	}
-	return strings.Join(paths, "/")
+
+	return PathKey{
+		Pathname: strings.Join(paths, "/"),
+		Original: hashStr,
+	}
 }
 
 
-type PathTransformFunc func(string) string
+type PathTransformFunc func(string) PathKey
+
+type PathKey struct {
+	Pathname string
+	Original string
+}
+func (p PathKey) FileName() string {
+	return fmt.Sprintf("%s/%s", p.Pathname, p.Original)
+}
 
 var DefaultPathTransformFunc = func(key string) string {
 	return key
@@ -46,30 +58,37 @@ func NewStore(opts StoreOpts) *Store {
 		StoreOpts: opts,
 	}
 }
+func (s *Store) Read(key string) (io.Reader, error) {
+	f, err := s.readStream(key)
+	defer f.Close()
+	if err != nil {
+		return nil, err
+	}
+	buffer := new(bytes.Buffer)
+	_, err = io.Copy(buffer, f)
+	return buffer, err
 
+}
 
-
+func (s *Store) readStream(key string) (io.ReadCloser, error) {
+	pathKey := s.PathTransformFunc(key)
+	return os.Open(pathKey.FileName())
+}
 
 
 func (s *Store) writeStream(r io.Reader, key string) error {
-	pathName := s.PathTransformFunc(key)
-	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
+	pathKey := s.PathTransformFunc(key)
+	if err := os.MkdirAll(pathKey.Pathname, os.ModePerm); err != nil {
 		return err
 	}
 
-	buf := new(bytes.Buffer)
-	io.Copy(buf, r)
-
-	hash := sha1.Sum(buf.Bytes())
-	fileName := hex.EncodeToString(hash[:])
-
-	fullPath := pathName + "/" + fileName
+	fullPath := pathKey.FileName()
 	file, err := os.Create(fullPath)
 	if err != nil {
 		return err
 	}
 	
-	n, err := io.Copy(file, buf)
+	n, err := io.Copy(file, r)
 	if err != nil {
 		return err
 	}	
